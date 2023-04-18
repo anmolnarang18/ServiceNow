@@ -40,7 +40,6 @@
 		0D75BBDB29E9086D00D28191 /* ServiceNow.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 0D75BBD929E9086D00D28191 /* ServiceNow.xcdatamodeld */; };
 		0D75BBDD29E9086E00D28191 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0D75BBDC29E9086E00D28191 /* Assets.xcassets */; };
 		0D75BBE029E9086E00D28191 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 0D75BBDE29E9086E00D28191 /* LaunchScreen.storyboard */; };
-		0D75BBEB29E92FED00D28191 /* AppRes in Resources */ = {isa = PBXBuildFile; fileRef = 0D75BBEA29E92FED00D28191 /* AppRes */; };
 		0D75BBED29E930F600D28191 /* LoginVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D75BBEC29E930F600D28191 /* LoginVC.swift */; };
 		0D75BBEF29E9433500D28191 /* mainScreenSliderCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D75BBEE29E9433500D28191 /* mainScreenSliderCell.swift */; };
 		0DC3A09829EE01610034C371 /* Montserrat-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0DC3A07A29EE015F0034C371 /* Montserrat-Light.ttf */; };
@@ -113,7 +112,6 @@
 		0D75BBDC29E9086E00D28191 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		0D75BBDF29E9086E00D28191 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		0D75BBE129E9086E00D28191 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		0D75BBEA29E92FED00D28191 /* AppRes */ = {isa = PBXFileReference; lastKnownFileType = folder; path = AppRes; sourceTree = "<group>"; };
 		0D75BBEC29E930F600D28191 /* LoginVC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginVC.swift; sourceTree = "<group>"; };
 		0D75BBEE29E9433500D28191 /* mainScreenSliderCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = mainScreenSliderCell.swift; sourceTree = "<group>"; };
 		0DC3A07A29EE015F0034C371 /* Montserrat-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Montserrat-Light.ttf"; sourceTree = "<group>"; };
@@ -262,7 +260,6 @@
 				0D00B7F629EDC28000EE26ED /* BottomViewController */,
 				0D75BBD029E9086D00D28191 /* AppDelegate.swift */,
 				0D75BBD229E9086D00D28191 /* SceneDelegate.swift */,
-				0D75BBEA29E92FED00D28191 /* AppRes */,
 				0D43796329EC932400868439 /* models */,
 				0D00B7D329ED197B00EE26ED /* helper classes */,
 				0D43796229EC931500868439 /* ViewControllers */,
@@ -400,7 +397,6 @@
 				0DC3A0B429EE01610034C371 /* Roboto-Bold.ttf in Resources */,
 				0D75BBE029E9086E00D28191 /* LaunchScreen.storyboard in Resources */,
 				0DC3A0B529EE01610034C371 /* Montserrat-BoldItalic.ttf in Resources */,
-				0D75BBEB29E92FED00D28191 /* AppRes in Resources */,
 				0DC3A0AD29EE01610034C371 /* Roboto-MediumItalic.ttf in Resources */,
 				0DC3A0B229EE01610034C371 /* Montserrat-ExtraLightItalic.ttf in Resources */,
 				0DC3A09C29EE01610034C371 /* Montserrat-Italic.ttf in Resources */,
