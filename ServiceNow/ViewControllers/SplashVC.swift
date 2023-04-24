@@ -67,12 +67,28 @@ class SplashVC: UIViewController ,CLLocationManagerDelegate{
             DispatchQueue.main.asyncAfter(deadline: .now()+(Double(x) * 0.50), execute: { [self] in
                 progressView.setProgress(Float(x)/10, animated: true)
                 if x == 10{
-                    let vcStoreList = storyboard?.instantiateViewController(withIdentifier: "LoginVC") as! LoginVC
-                    self.navigationController?.pushViewController(vcStoreList, animated: true)
+                    furtherRoute()
+                    
                 }
             })
         }
         }
+    func furtherRoute(){
+        accessToken = UserDefaults.standard.string(forKey: "accessToken")
+        let userData = getJSON("isUserLogin")
+        if userData?["type"].stringValue == "MANAGER"{
+           isSP = true
+        }else{
+            isSP = false
+        }
+        if accessToken != nil{
+            let vcStoreList = storyboard?.instantiateViewController(withIdentifier: "HomeVC") as! HomeVC
+            self.navigationController?.pushViewController(vcStoreList, animated: true)
+        }else{
+            let vcStoreList = storyboard?.instantiateViewController(withIdentifier: "LoginVC") as! LoginVC
+            self.navigationController?.pushViewController(vcStoreList, animated: true)
+        }
+    }
     @objc func setupUI(){
         
         if userlat == 0.0 && userlong == 0.0 {

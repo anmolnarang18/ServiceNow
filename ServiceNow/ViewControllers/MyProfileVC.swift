@@ -25,6 +25,9 @@ checkUser()
             self.favImage.image = UIImage(systemName: "plus")
             self.favTitle.text = "Add"
         }
+        let userData = getJSON("isUserLogin")
+        lblUserName.text = userData?["name"].stringValue
+        lblUserEmail.text = userData?["email"].stringValue
     }
 
     @IBAction func onHome(_ sender: Any) {
@@ -46,6 +49,9 @@ checkUser()
     }
     
     @IBAction func onLogout(_ sender: Any) {
+        UserDefaults.standard.removeObject(forKey: "accessToken")
+        UserDefaults.standard.removeObject(forKey: "isUserLogin")
+        accessToken = UserDefaults.standard.string(forKey: "accessToken")
         let vcStoreList = storyboard?.instantiateViewController(withIdentifier: "LoginVC") as! LoginVC
         self.navigationController?.pushViewController(vcStoreList, animated: true)
     }

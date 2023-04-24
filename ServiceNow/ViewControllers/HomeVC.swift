@@ -6,13 +6,24 @@
 //
 
 import UIKit
+import SVProgressHUD
+import CoreLocation
+import MarqueeLabel
+import SwiftyJSON
+import CoreLocation
+
 
 class HomeVC: UIViewController, UICollectionViewDataSource, UICollectionViewDelegate,UICollectionViewDelegateFlowLayout, UITableViewDelegate, UITableViewDataSource {
     
-    var serviceArray = [services]()
+//    var serviceArray = [services]()
+    var serviceList: [services] = []
+    var favoriteList: [services] = []
     var imageCollection = ["slideService1","slideService2","slideService3"]
     
   
+    
+    @IBOutlet weak var lblLocation: MarqueeLabel!
+    
     @IBOutlet weak var sortingSwitch: UISwitch!
     @IBOutlet weak var sortingView: UIView!
     @IBOutlet weak var sortingViewHeight: NSLayoutConstraint!
@@ -36,16 +47,30 @@ class HomeVC: UIViewController, UICollectionViewDataSource, UICollectionViewDele
     }
     override func viewDidLoad() {
         super.viewDidLoad()
+       
+    }
+    override func viewWillAppear(_ animated: Bool) {
         checkUser()
-        dummyData()
+        getServices()
+        getLocationAddress()
         self.slideShowCV.reloadData()
         self.serviceTableView.reloadData()
+        sortingSwitch.addTarget(self, action: #selector(self.switchValueDidChange), for: .valueChanged)
     }
     func noServicesView(){
-        if serviceArray.isEmpty{
+        if serviceList.isEmpty{
             self.lblNoService.isHidden = false
         }else{
             self.lblNoService.isHidden = true
+        }
+    }
+    @objc func switchValueDidChange() {
+        if sortingSwitch.isOn{
+        serviceList.sort { $0.price < $1.price }
+        self.serviceTableView.reloadData()
+        }else{
+            serviceList.sort { $0.distance < $1.distance }
+            self.serviceTableView.reloadData()
         }
     }
     func checkUser(){
@@ -55,12 +80,6 @@ class HomeVC: UIViewController, UICollectionViewDataSource, UICollectionViewDele
             self.sortingView.isHidden = true
             self.sortingViewHeight.constant = 0
         }
-    }
-    func dummyData(){
-        serviceArray.append(services(title: "Cleaning Services", companyName: "Air Duct Cleaner", location: "Kennedy & Williams", serviceDesc: "We thoroughly clean Air Ducts", currentPrice: 99.99,phoneNumber:"9057830299", isFavorite:1,postedDate: "03-16-2022"))
-        serviceArray.append(services(title: "Internet Service", companyName: "Fast Fibre net", location: "James Potter", serviceDesc: "We provide fast internet service", currentPrice: 59.99,phoneNumber:"9057830902", isFavorite:0,postedDate: "04-11-2022",status: 1))
-        serviceArray.append(services(title: "Food Service", companyName: "Fast Food", location: "Yonge Street", serviceDesc: "We provide fast Food service", currentPrice: 59.99,phoneNumber:"9057830902", isFavorite:0,postedDate: "03-16-2022",status: 0))
-        noServicesView()
     }
     
     @IBAction func onFav(_ sender: Any) {
@@ -81,6 +100,129 @@ class HomeVC: UIViewController, UICollectionViewDataSource, UICollectionViewDele
         self.navigationController?.pushViewController(vcStoreList, animated: true)
     }
     
+    @IBAction func onLocation(_ sender: Any) {
+        let vcSearchMap = self.storyboard?.instantiateViewController(withIdentifier: "SearchMapVC") as! SearchMapVC
+        vcSearchMap.latitude = userlat
+        vcSearchMap.longitude = userlong
+        vcSearchMap.searchCallBack = { (latitude, longitude, address, screenType) in
+            userlat = latitude
+            userlong = longitude
+            self.lblLocation.text = address
+            currentAddress = address
+            let updateAddreess:[String : Any] = ["latitude": "\(latitude)", "longitude":"\(longitude)", "address":address]
+            NotificationCenter.default.post(name: NSNotification.Name(rawValue: "LocationUpdateNotification"), object: nil, userInfo: updateAddreess)
+            self.getServices()
+            self.switchValueDidChange()
+        }
+        self.present(vcSearchMap, animated: true, completion: nil)
+    }
+    func getLocationAddress() {
+        //print("10")
+        SVProgressHUD.show()
+        
+        updatedCoordinates.latitude = userlat
+        updatedCoordinates.longitude = userlong
+        
+//        let language = Localize.currentLang()
+        let lang = localLanguage
+//        if language == .arabic {
+//            lang = localLanguage
+//        }
+        let url =  "https://maps.googleapis.com/maps/api/geocode/json?latlng=\(userlat),\(userlong)&key=\(Keys.googleKey)&language=\(lang)&sensor=true"
+        
+        TrackOrderModel.sendRequestToServer(baseUrl: url, "", httpMethod: "POST", isZipped: false) { (isSuccess, response) in
+            if let address = response["results"] as? [[String: Any]], let data = address.first, let formatedAddess = data["formatted_address"] as? String {
+                DispatchQueue.main.async {
+                    if "\(self.lblLocation.text!)" == "Getting your current location"{
+                    self.lblLocation.text = formatedAddess
+                    }
+                    currentAddress = formatedAddess
+                    SVProgressHUD.dismiss()
+                }
+            }
+        }
+    }
+    
+    func getServices(){
+        SVProgressHUD.show()
+        var param: [String: Any] = [:]
+        if !isSP{
+            param["isAll"] = true
+        }
+        
+        
+        let url = API.getServices
+        
+        TrackOrderModel.sendRequestToServerWithParam(baseUrl: url, "", httpMethod: "POST", isZipped: false, param: param) { (isSuccess, response) in
+            print(response)
+                DispatchQueue.main.async {
+                    let json = JSON(response["data"])
+                    if !self.serviceList.isEmpty{
+                        self.serviceList.removeAll()
+                    }
+                    for item in 0..<json.count{
+                        let p = services(fromDictionary:json[item].dictionaryObject!)
+                        print(p)
+                        self.serviceList.append(p)
+                    }
+                    self.serviceList.sort { $0.price < $1.price }
+                    if !isSP{
+                    self.getFavorites()
+                    }else{
+                        self.noServicesView()
+                        self.serviceTableView.reloadData()
+                    }
+                    if !self.serviceList.isEmpty{
+                    for item in 0...self.serviceList.count-1{
+                        self.serviceList[item].distance = self.calculateDistance(serv: self.serviceList[item])
+                    }
+                    }
+                }
+//                showAlertMsg(Message: response["message"] as? String ?? "", AutoHide: false)
+                SVProgressHUD.dismiss()
+        }
+    }
+    func getFavorites(){
+        SVProgressHUD.show()
+        var param: [String: Any] = [:]
+        param["isAll"] = false
+        
+        let url = API.getFav
+        print(url)
+        TrackOrderModel.sendRequestToServerWithParam(baseUrl: url, "", httpMethod: "POST", isZipped: false, param: param) { (isSuccess, response) in
+            print(response)
+            let result = JSON(response["data"]!)
+             let json = result
+                DispatchQueue.main.async {
+                    if !self.favoriteList.isEmpty{
+                        self.favoriteList.removeAll()
+                    }
+                    for item in 0..<json.count{
+                        let p = services(fromDictionary:json[item].dictionaryObject!)
+                        print(p)
+                        self.favoriteList.append(p)
+                    }
+                    if !self.serviceList.isEmpty && !self.favoriteList.isEmpty{
+                    for item in 0...self.serviceList.count-1{
+                        let check = self.favoriteList.contains(where: {$0.serviceID == self.serviceList[item].serviceID})
+                        if check{
+                            self.serviceList[item].isFavorite = 1
+                        }
+                    }
+                    }
+                    self.noServicesView()
+                    self.serviceTableView.reloadData()
+                }
+                SVProgressHUD.dismiss()
+            }
+        }
+    func calculateDistance(serv:services)->Double{
+        let coordinate₀ = CLLocation(latitude: Double(serv.userLat) ?? 0.0, longitude: Double(serv.userLong) ?? 0.0)
+        let coordinate₁ = CLLocation(latitude: userlat, longitude: userlong)
+
+        let distanceInMeters = coordinate₀.distance(from: coordinate₁)
+        return Double(distanceInMeters)
+    }
     
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
@@ -99,23 +241,31 @@ class HomeVC: UIViewController, UICollectionViewDataSource, UICollectionViewDele
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return serviceArray.count
+        return serviceList.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "listViewCell", for: indexPath) as! listViewCell
         cell.layer.cornerRadius = 5
         cell.clipsToBounds = true
-        cell.serviceTitle.text = serviceArray[indexPath.row].title
-        cell.companyName.text = serviceArray[indexPath.row].companyName
-        cell.storeLocation.text = serviceArray[indexPath.row].location
-        cell.serviceDesc.text = serviceArray[indexPath.row].serviceDesc
-        cell.servicePrice.text = "$\(serviceArray[indexPath.row].currentPrice)"
+        cell.serviceTitle.text = serviceList[indexPath.row].serviceName
+        cell.companyName.text = serviceList[indexPath.row].companyName
+        cell.storeLocation.text = serviceList[indexPath.row].address
+        cell.serviceDesc.text = serviceList[indexPath.row].description
+        cell.servicePrice.text = "$\(serviceList[indexPath.row].price ?? 0.0)"
+        cell.postedDate.text = dateFormatter(date: serviceList[indexPath.row].createdAt)
+        cell.btnPhone.addTarget(self, action: #selector(onMakeCall(_:)), for: .touchUpInside)
+        cell.btnShare.addTarget(self, action: #selector(onShare(_:)), for: .touchUpInside)
+        cell.btnFav.addTarget(self, action: #selector(onFavorite(_:)), for: .touchUpInside)
+        cell.btnPhone.tag = indexPath.row
+        cell.btnShare.tag = indexPath.row
+        cell.btnFav.tag = indexPath.row
+        
         if isSP{
             cell.btnFav.isHidden = true
             cell.btnPhone.isHidden = true
         }else{
-            if serviceArray[indexPath.row].isFavorite == 0{
+            if serviceList[indexPath.row].isFavorite == 0{
                 cell.btnFav.setImage(UIImage(systemName: "heart"), for: .normal)
             }else{
                 cell.btnFav.setImage(UIImage(systemName: "heart.fill"), for: .normal)
@@ -126,7 +276,7 @@ class HomeVC: UIViewController, UICollectionViewDataSource, UICollectionViewDele
     }
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let vcStoreList = storyboard?.instantiateViewController(withIdentifier: "ServiceDetailsVC") as! ServiceDetailsVC
-        vcStoreList.currentService = serviceArray[indexPath.row]
+        vcStoreList.currentService = serviceList[indexPath.row]
         self.navigationController?.pushViewController(vcStoreList, animated: true)
     }
     func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
@@ -134,8 +284,7 @@ class HomeVC: UIViewController, UICollectionViewDataSource, UICollectionViewDele
             return nil
         }else{
             let deleteAction = UIContextualAction(style: .normal, title: "") { (context, view, result) in
-                self.serviceArray.remove(at: indexPath.row)
-                self.serviceTableView.reloadData()
+                self.deleteService(sID: self.serviceList[indexPath.row].serviceID)
                 self.noServicesView()
             }
             
@@ -146,6 +295,73 @@ class HomeVC: UIViewController, UICollectionViewDataSource, UICollectionViewDele
             config.performsFirstActionWithFullSwipe = false
             
             return config
+        }
+    }
+    
+    @objc func onMakeCall(_ sender:UIButton){
+        callNumber(phoneNumber: serviceList[sender.tag].phoneNumber.clean)
+    }
+    @objc func onFavorite(_ sender:UIButton){
+        SVProgressHUD.show()
+        var param: [String: Any] = [:]
+        param["serviceID"] = serviceList[sender.tag].serviceID
+        param["serviceName"] = serviceList[sender.tag].serviceName
+        param["companyName"] = serviceList[sender.tag].companyName
+        param["address"] = serviceList[sender.tag].address
+        param["price"] = serviceList[sender.tag].price
+        param["description"] = serviceList[sender.tag].description
+        param["phoneNumber"] = serviceList[sender.tag].phoneNumber
+        param["startTime"] = serviceList[sender.tag].startTime
+        param["endTime"] = serviceList[sender.tag].endTime
+        param["userLong"] = serviceList[sender.tag].userLat
+        param["userLat"] = serviceList[sender.tag].userLong
+     
+        
+        let url = API.addToFav
+        
+        TrackOrderModel.sendRequestToServerWithParam(baseUrl: url, "", httpMethod: "POST", isZipped: false, param: param) { (isSuccess, response) in
+            print(response)
+            if let json = response["data"] as? [String: Any]{
+                DispatchQueue.main.async {
+                    showAlertMsg(Message: response["message"] as? String ?? "", AutoHide: false)
+                    self.getServices()
+                    SVProgressHUD.dismiss()
+                }
+            }else{
+                showAlertMsg(Message: response["message"] as? String ?? "", AutoHide: false)
+                SVProgressHUD.dismiss()
+            }
+        }
+    }
+    
+    @objc func onShare(_ sender:UIButton){
+        let item = sender.tag
+        let text = "Check This Out\nService Name: \(serviceList[item].serviceName!)\nCompany Name: \(serviceList[item].companyName!)\nAddress: \(serviceList[item].address!)\nPhoneNumber: \(serviceList[item].phoneNumber!)\nDescription: \(serviceList[item].description!)"
+        let textToShare = [text]
+        let activityViewController = UIActivityViewController(activityItems: textToShare as [Any], applicationActivities: nil)
+        activityViewController.popoverPresentationController?.sourceView = self.view
+        self.present(activityViewController, animated: true, completion: nil)
+    }
+    
+    func deleteService(sID:Int){
+        SVProgressHUD.show()
+        var param: [String: Any] = [:]
+        param["service_ID"] = sID
+     
+        
+        let url = API.deleteService
+        
+        TrackOrderModel.sendRequestToServerWithParam(baseUrl: url, "", httpMethod: "POST", isZipped: false, param: param) { (isSuccess, response) in
+            print(response)
+            if let json = response["data"] as? [String: Any]{
+                DispatchQueue.main.async {
+                    self.getServices()
+                    SVProgressHUD.dismiss()
+                }
+            }else{
+                showAlertMsg(Message: response["message"] as? String ?? "", AutoHide: false)
+                SVProgressHUD.dismiss()
+            }
         }
     }
 

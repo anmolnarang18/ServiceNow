@@ -18,7 +18,7 @@ var isSP = false
 var accessToken = UserDefaults.standard.string(forKey: "accessToken")
 var userCheckClass : AnyObject!
 var userCheckString = String()
-//var header : HTTPHeaders = ["access-token":"\(accessToken ?? "")","Content-Type":"application/json","content-language":localLanguage]
+var header : HTTPHeaders = ["access-token":"\(accessToken ?? "")","Content-Type":"application/json","content-language":localLanguage]
 //var SHeader : HTTPHeaders = ["Content-Type":"application/json","content-language":localLanguage]
 var secondsFromGMT: Int { return TimeZone.current.secondsFromGMT() / 60 }
 
@@ -76,7 +76,21 @@ struct API {
     //static let base_URL = "http://206.189.178.139:8333"
     //static let base_URL  = "http://206.189.178.139:8888"
 
-    static let base_URL = "https://api.my-trolley.com"
+    static let base_URL = "http://localhost:8000"
+    
+    static let newLogin = API.base_URL + "/auth/login"
+    static let newSignUp = API.base_URL + "/auth/createUser"
+    static let getServices = API.base_URL + "/auth/getServices"
+    static let createService = API.base_URL + "/auth/createService"
+    static let createOrder = API.base_URL + "/auth/createOrder"
+    static let getOrders = API.base_URL + "/auth/getOrders"
+    static let getOrdersForCreator = API.base_URL + "/auth/getOrdersForCreator"
+    static let updateOrder = API.base_URL + "/auth/updateOrder"
+    static let deleteService = API.base_URL + "/auth/deleteService"
+    static let addToFav = API.base_URL + "/auth/addFav"
+    static let getFav = API.base_URL + "/auth/getFav"
+    static let deleteFav = API.base_URL + "/auth/deleteFav"
+    
     static let GetAppVesion = API.base_URL + "/api/customer/getAppVersion?&deviceType=IOS"
     
     static let Get_customer_search_history = API.base_URL + "/api/customer/getCustomerSearchHistory"
@@ -185,6 +199,38 @@ func roundCorners(view :UIView, corners: UIRectCorner, radius: CGFloat){
     mask.path = path.cgPath
     view.layer.mask = mask
 }
+func isUserLogin() -> Bool {
+    if (UserDefaults .standard.object(forKey: "isUserLogin") != nil) {
+        return true
+    }
+    return false
+}
+
+func saveJSON(json: JSON, key:String){
+    if let jsonString = json.rawString() {
+        UserDefaults.standard.setValue(jsonString, forKey: key)
+    }
+}
+
+func getJSON(_ key: String)-> JSON? {
+    var p = ""
+    if let result = UserDefaults.standard.string(forKey: key) {
+        p = result
+    }
+    if p != "" {
+        if let json = p.data(using: String.Encoding.utf8, allowLossyConversion: false) {
+            do {
+                return try JSON(data: json)
+            } catch {
+                return nil
+            }
+        } else {
+            return nil
+        }
+    } else {
+        return nil
+    }
+}
 func showAlertMsg(Message: String, AutoHide:Bool) -> Void
 {
     DispatchQueue.main.async
@@ -210,5 +256,49 @@ func showAlertMsg(Message: String, AutoHide:Bool) -> Void
             
         }
         UIApplication.shared.windows[0].rootViewController?.present(alert, animated: true, completion: nil)
+    }
+}
+func dateFormatter(date:String)->String{
+    let dateFormatterGet = DateFormatter()
+    dateFormatterGet.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+    
+    let dateFormatterPrint = DateFormatter()
+    dateFormatterPrint.dateFormat = "dd MMM yyyy"
+
+    if let localDate = dateFormatterGet.date(from: date) {
+        return dateFormatterPrint.string(from: localDate)
+    } else {
+        print("There was an error decoding the string")
+    }
+    return "Error"
+}
+
+func timeFormatter(date:Date)->String{
+    let dateFormater = DateFormatter()
+//    dateFormater.timezone = .current // you don't need this; it is the default
+    dateFormater.dateFormat = "HH:mm" // this is "2021-10-29"
+    // when user selects a date
+    print(dateFormater.string(from: date))
+    return dateFormater.string(from: date)
+}
+extension Double {
+    var clean: String {
+       return self.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", self) : String(self)
+    }
+}
+func callNumber(phoneNumber:String) {
+    
+    if let phoneCallURL = URL(string: "telprompt://\(phoneNumber)") {
+        
+        let application:UIApplication = UIApplication.shared
+        if (application.canOpenURL(phoneCallURL)) {
+            if #available(iOS 10.0, *) {
+                application.open(phoneCallURL, options: [:], completionHandler: nil)
+            } else {
+                // Fallback on earlier versions
+                application.openURL(phoneCallURL as URL)
+                
+            }
+        }
     }
 }

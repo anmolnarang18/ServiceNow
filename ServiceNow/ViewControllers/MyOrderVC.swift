@@ -6,10 +6,12 @@
 //
 
 import UIKit
+import SVProgressHUD
+import SwiftyJSON
 
 class MyOrderVC: UIViewController {
 
-    var serviceArray = [services]()
+    var serviceList: [services] = []
     @IBOutlet weak var favImage: UIImageView!
     @IBOutlet weak var favTitle: UILabel!
     @IBOutlet weak var lblNoOrders: UILabel!
@@ -23,13 +25,14 @@ class MyOrderVC: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        dummyData()
-        checkUser()
-                self.serviceTableView.reloadData()
         // Do any additional setup after loading the view.
     }
+    override func viewWillAppear(_ animated: Bool) {
+        checkUser()
+        getOrders()
+    }
     func noOrdersView(){
-        if serviceArray.isEmpty{
+        if serviceList.isEmpty{
             self.lblNoOrders.isHidden = false
         }else{
             self.lblNoOrders.isHidden = true
@@ -41,6 +44,43 @@ class MyOrderVC: UIViewController {
             self.favTitle.text = "Add"
         }
     }
+    
+    func getOrders(){
+        SVProgressHUD.show()
+        var param: [String: Any] = [:]
+        param["isAll"] = false
+        
+        var url = ""
+        if isSP{
+        url = API.getOrdersForCreator
+            let userData = getJSON("isUserLogin")
+            let creator = userData?["_id"].stringValue
+    param["serviceCreator"] = creator
+        }else{
+        url = API.getOrders
+        }
+        print(url)
+        TrackOrderModel.sendRequestToServerWithParam(baseUrl: url, "", httpMethod: "POST", isZipped: false, param: param) { (isSuccess, response) in
+            print(response)
+            let result = JSON(response["data"]!)
+             let json = result
+                DispatchQueue.main.async {
+                    if !self.serviceList.isEmpty{
+                        self.serviceList.removeAll()
+                    }
+                    for item in 0..<json.count{
+                        let p = services(fromDictionary:json[item].dictionaryObject!)
+                        print(p)
+                        self.serviceList.append(p)
+                        self.serviceTableView.reloadData()
+                        self.noOrdersView()
+                    }
+                }
+//            }else{
+//                showAlertMsg(Message: response["message"] as? String ?? "", AutoHide: false)
+                SVProgressHUD.dismiss()
+            }
+        }
 
     
     @IBAction func onHome(_ sender: Any) {
@@ -64,52 +104,52 @@ class MyOrderVC: UIViewController {
 }
 extension MyOrderVC: UITableViewDataSource, UITableViewDelegate {
     
-    func dummyData(){
-        serviceArray.append(services(title: "Cleaning Services", companyName: "Air Duct Cleaner", location: "Kennedy & Williams", serviceDesc: "We thoroughly clean Air Ducts", currentPrice: 99.99,phoneNumber:"9057830299", isFavorite:1,postedDate: "03-16-2022"))
-        serviceArray.append(services(title: "Internet Service", companyName: "Fast Fibre net", location: "James Potter", serviceDesc: "We provide fast internet service", currentPrice: 59.99,phoneNumber:"9057830902", isFavorite:0,postedDate: "04-11-2022",status: 1))
-        serviceArray.append(services(title: "Food Service", companyName: "Fast Food", location: "Yonge Street", serviceDesc: "We provide fast Food service", currentPrice: 59.99,phoneNumber:"9057830902", isFavorite:0,postedDate: "03-16-2022",status: 0))
-        noOrdersView()
-    }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return serviceArray.count
+        return serviceList.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "listViewCell", for: indexPath) as! listViewCell
         cell.layer.cornerRadius = 5
         cell.clipsToBounds = true
-        cell.serviceTitle.text = serviceArray[indexPath.row].title
-        cell.companyName.text = serviceArray[indexPath.row].companyName
-        cell.storeLocation.text = serviceArray[indexPath.row].location
-        cell.serviceDesc.text = serviceArray[indexPath.row].serviceDesc
-        cell.servicePrice.text = "$\(serviceArray[indexPath.row].currentPrice)"
+        cell.serviceTitle.text = serviceList[indexPath.row].serviceName
+        cell.companyName.text = serviceList[indexPath.row].companyName
+        cell.storeLocation.text = serviceList[indexPath.row].address
+        cell.serviceDesc.text = serviceList[indexPath.row].description
+        cell.servicePrice.text = "$\(serviceList[indexPath.row].price ?? 0.0)"
+        cell.btnPhone.addTarget(self, action: #selector(onMakeCall(_:)), for: .touchUpInside)
+        cell.btnShare.addTarget(self, action: #selector(onShare(_:)), for: .touchUpInside)
+        cell.btnPhone.tag = indexPath.row
+        cell.btnShare.tag = indexPath.row
+        cell.btnFav.isHidden = true
+
         if isSP{
-            cell.btnFav.isHidden = true
-            cell.lblStatus.isHidden = false
-           if serviceArray[indexPath.row].status == 1{
+                        cell.lblStatus.isHidden = false
+           if serviceList[indexPath.row].status == 0{
                 cell.lblStatus.text = "Accepted"
             } else{
                 cell.lblStatus.text = "Requested"
             }
         }else{
-            if serviceArray[indexPath.row].isFavorite == 0{
-                cell.btnFav.setImage(UIImage(systemName: "heart"), for: .normal)
-            }else{
-                cell.btnFav.setImage(UIImage(systemName: "heart.fill"), for: .normal)
-            }
+//            if serviceArray[indexPath.row].isFavorite == 0{
+//                cell.btnFav.setImage(UIImage(systemName: "heart"), for: .normal)
+//            }else{
+//                cell.btnFav.setImage(UIImage(systemName: "heart.fill"), for: .normal)
+//            }
         }
         return cell
     }
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let vcStoreList = storyboard?.instantiateViewController(withIdentifier: "ServiceDetailsVC") as! ServiceDetailsVC
         vcStoreList.fromMyOrder = true
-        vcStoreList.currentService = serviceArray[indexPath.row]
+        vcStoreList.currentService = serviceList[indexPath.row]
         self.navigationController?.pushViewController(vcStoreList, animated: true)
     }
     func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
-            let deleteAction = UIContextualAction(style: .normal, title: "") { (context, view, result) in
-                self.serviceArray.remove(at: indexPath.row)
+        if !isSP{
+            let deleteAction = UIContextualAction(style: .normal, title: "") {(context, view, result) in
+                self.deleteService(sID: self.serviceList[indexPath.row].orderID ?? 0)
                 self.serviceTableView.reloadData()
                 self.noOrdersView()
             }
@@ -121,5 +161,40 @@ extension MyOrderVC: UITableViewDataSource, UITableViewDelegate {
             config.performsFirstActionWithFullSwipe = false
             
             return config
+        }else{
+            return nil
+        }
+    }
+    @objc func onMakeCall(_ sender:UIButton){
+        callNumber(phoneNumber: serviceList[sender.tag].phoneNumber.clean)
+    }
+    @objc func onShare(_ sender:UIButton){
+        let item = sender.tag
+        let text = "Check This Out\nService Name: \(serviceList[item].serviceName!)\nCompany Name: \(serviceList[item].companyName!)\nPhoneNumber: \(serviceList[item].phoneNumber!)\nDescription: \(serviceList[item].description!)"
+        let textToShare = [text]
+        let activityViewController = UIActivityViewController(activityItems: textToShare as [Any], applicationActivities: nil)
+        activityViewController.popoverPresentationController?.sourceView = self.view
+        self.present(activityViewController, animated: true, completion: nil)
+    }
+    func deleteService(sID:Int){
+        SVProgressHUD.show()
+        var param: [String: Any] = [:]
+        param["orderID"] = sID
+     
+        
+        let url = API.deleteService
+        
+        TrackOrderModel.sendRequestToServerWithParam(baseUrl: url, "", httpMethod: "POST", isZipped: false, param: param) { (isSuccess, response) in
+            print(response)
+            if let json = response["data"] as? [String: Any]{
+                DispatchQueue.main.async {
+                    self.getOrders()
+                    SVProgressHUD.dismiss()
+                }
+            }else{
+                showAlertMsg(Message: response["message"] as? String ?? "", AutoHide: false)
+                SVProgressHUD.dismiss()
+            }
+        }
     }
 }

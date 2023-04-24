@@ -9,15 +9,18 @@ import UIKit
 import CoreData
 import GoogleMaps
 import GooglePlaces
+import SVProgressHUD
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
-
+    var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         GMSPlacesClient.provideAPIKey("AIzaSyBx328yRj2KfH4flcGsAy2Wka8VvbND8u4")
         GMSServices.provideAPIKey("AIzaSyBx328yRj2KfH4flcGsAy2Wka8VvbND8u4")
+        SVProgressHUD.setDefaultMaskType(.clear)
+        SVProgressHUD.setForegroundColor(UIColor(named: "ic_baseColor") ?? UIColor.green)
         // Override point for customization after application launch.
         return true
     }
